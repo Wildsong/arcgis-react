@@ -305,7 +305,7 @@ class PortalScan(object):
 
 if __name__ == "__main__":
 
-    gis = GIS(Config.PORTAL_URL, Config.PORTAL_USER, Config.PORTAL_PASSWORD)
+    gis = GIS(Config.PORTAL_PROFILE)
     portal = PortalScan(gis)
     portal.scan()
 

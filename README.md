@@ -49,20 +49,14 @@ Web app
 
 ## Set up
 
+I stopped embedding username and password in a .env file, now I embed a 
+PORTAL_PROFILE setting. Create a Portal profile, embed your username and
+password in **it**. Then reference the profile instead of a plaintext password.
+
 ### Conda environment for Python packages
 
     conda create --name=arctic --file=requirements.txt -c conda-forge -c esri
     conda activate arctic
-
-### FlexLM
-
-I am adding support for the ESRI LicenseManager (flexlm)
-by merging in code from my previous docker project docker-flexlm.
-
-There is a client program
-
-conda activate arctic
-```
 
 ### FlexLM
 
@@ -71,7 +65,6 @@ by merging in code from my previous docker project docker-flexlm.
 
 The code for it is currently in mqtt_test because I am testing
 using it to queue messages using MQTT. There is a client program
->>>>>>> f0c9ca442006e07e735f5e24efa91fcef07837c4
 that subscribes to messages and a logwatch.py script that will
 eventually watch the log file for FlexLM and publish changes to MQTT.
 
