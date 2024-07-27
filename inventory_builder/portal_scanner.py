@@ -13,7 +13,7 @@ from arcgis.mapping import WebMap
 import database
 from config import Config
 
-VERSION = '1.0'
+VERSION = '1.0.1'
 path, exe = os.path.split(__file__)
 myname = exe + ' ' + VERSION
 
@@ -50,19 +50,17 @@ class PortalScan(object):
         self.gis = gis
         pass
 
-    def scan(self) -> None:
+    def scanEverything(self) -> None:
 
-#        self.apps(items)
+        #self.inventory_apps() # This is not done yet
         self.inventory_maps()
         self.inventory_services()
 
         # https://developers.arcgis.com/python/api-reference/arcgis.gis.admin.html#portaladminmanager
-        pam = PortalAdminManager(Config.PORTAL_URL + '//sharing/rest/', gis)
+        pam = PortalAdminManager(self.gis.url + 'sharing/rest/', gis=self.gis)
         # pam.category_schema # manage categories
 
         print("Version:", pam.info['currentversion'])
-
-
 
         # TODO whatever I think I know this already anyway
         #for machine in pam.machines.list():
@@ -120,23 +118,24 @@ class PortalScan(object):
             print(wh.properties)
 
         tasks = pam.scheduled_tasks()
-        if len(tasks):
+        if tasks:
             print("Scheduled tasks:")
             for item in tasks:
                 print(item)
+            print()
         
         feds = pam.federation.servers['servers']
         for server in feds:
-            print("federated server:", server['name'])
+            print("Federated server:", server['name'])
         
         self.licenses(pam.license)
-        self.logs(pam.logs)
         self.resources()
+        self.logs(pam.logs)
 
         return
 
     def maps(self) -> None:
-        contents = gis.content.search(query="*")
+        contents = self.gis.content.search(query="*")
         print(contents)
         return
     
@@ -150,6 +149,7 @@ class PortalScan(object):
         for item in prm.list():
             print(i, item['key'])
             i += 1
+        print()
         return
 
     def licenses(self, licman) -> None:
@@ -160,7 +160,7 @@ class PortalScan(object):
         return
 
 
-    def apps(self, items):
+    def inventory_apps(self):
         dtype = {} # A dictionary of all item types
         applications = [
             'Application',
@@ -183,7 +183,7 @@ class PortalScan(object):
 
     def inventory_maps(self, query=''):
         q = query + ' ' + exclude_esri
-        list_of_maps = gis.content.search(q, item_type='web map', max_items=-1)
+        list_of_maps = self.gis.content.search(q, item_type='web map', max_items=-1)
         print("Maps found %d" % len(list_of_maps))
         
         # Build a dictionary with each layer as the index
@@ -205,31 +205,33 @@ class PortalScan(object):
         # Each item is indexed by a layer id and contains a list of the maps containing that id.
         print(layer_dict)
 
-        # Now make another dictoinary that is indexed by type.
+        # Now make another dictionary that is indexed by type.
         dtype = defaultdict(dict)
         for item in list_of_maps: 
             dtype[item.type][item.id] = item
 
         print(dtype)
+        return
 
 
-    def inventory_services(gis) -> None:
-        interesting_services = list()
+    def inventory_services(self) -> None:
+        self.interesting_services = list()
         interesting_types = ['Map Service', 'Feature Service']
         urls = list()
 
-        myservers = gis.admin.servers.list()
+        myservers = self.gis.admin.servers.list()
         for f in myservers[0].services.folders:
             services = myservers[0].services.list(folder=f)
             print("Checking folder=\"%s\"; %d services." % (f, len(services)))
             for s in services:
                 properties = s.iteminformation.properties
-                try:
+                if 'type' in properties:
+                    #print(properties['type'])
                     if properties['type'] in interesting_types:
-                        interesting_services.append(s)
+                        self.interesting_services.append(s)
                     else:
-                        print(properties['title'], ':', properties['type'])
-                except KeyError:
+                        print("Not interesting: ", properties['title'], ':', properties['type'])
+                else:
                     if 'GPServer' in s.url:
                         continue
                     if 'GeometryServer' in s.url:
@@ -240,19 +242,18 @@ class PortalScan(object):
                         continue
                     urls.append(s.url)
 
-        # These did not have proprties,
-        # look like mostly Hosted
-        #print(urls)
+        for url in urls:
+            print(url)
 
-        for s in interesting_services:
+        for s in self.interesting_services:
             properties = s.iteminformation.properties
             if properties['type'] == 'Map Service':
-                print(s.url)
+                print("MapServer", s.url)
                 continue
             else:
                 print(properties)
 
-        cm = gis.content
+        cm = self.gis.content
 
         q = 'title:EGDB_surveys -owner:esri -owner:esri_apps -owner:esri_nav'
 
@@ -273,6 +274,8 @@ class PortalScan(object):
             print(item.title)
             for layer in item.layers:
                 print(layer, layer.source)
+
+        
 
 #    q = "NOT owner:esri_apps"
 #    items = gis.content.search(q, outside_org=False, max_items=5000)
@@ -305,9 +308,11 @@ class PortalScan(object):
 
 if __name__ == "__main__":
 
-    gis = GIS(Config.PORTAL_PROFILE)
+    gis = GIS(profile=Config.PORTAL_PROFILE)
     portal = PortalScan(gis)
-    portal.scan()
+
+    #portal.scanEverything()
+    services = portal.inventory_services() # All I am interested in today.
 
     print("All done!")
 

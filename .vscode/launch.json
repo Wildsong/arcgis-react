@@ -41,7 +41,7 @@
       "envFile": "${workspaceFolder}/.env",
       "env": {
         "PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}"
-      }
+      },
     }
   ]
 }
